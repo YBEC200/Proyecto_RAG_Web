@@ -53,6 +53,15 @@ class VectorStoreService:
         )
 
         self.last_hash = current_hash
+    
+    
+    def load(self):
+        if INDEX_PATH.exists():
+            self.db = FAISS.load_local(
+                INDEX_PATH,
+                self.embeddings,
+                allow_dangerous_deserialization=True
+            )
 
     def search(self, query: str, k: int = 3):
         if not self.db:

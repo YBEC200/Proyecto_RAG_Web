@@ -1,7 +1,8 @@
 from app.services.vectorstore import VectorStoreService
 from app.services.llm_service import LLMService
 from app.services.intent import IntentClassifier
-from app.services.laravel_service import LaravelService  # 👈 nuevo
+from app.services.laravel_client import LaravelClient
+from app.core.config import settings
 
 
 BASE_PROMPT = """
@@ -26,34 +27,22 @@ class RAGService:
         self.vectorstore = VectorStoreService()
         self.llm = LLMService()
         self.intent_classifier = IntentClassifier()
-        self.laravel_service = LaravelService()  # 👈 nuevo
+        self.laravel_client = LaravelClient()
 
-    def ask(self, question: str, token: str) -> str:
+    def ask(self, question: str) -> str:
+        """Procesa pregunta usando índice precargado al startup."""
         intent = self.intent_classifier.classify(question)
 
         if intent == "compatibilidad":
             return self.handle_compatibilidad(question)
-
-        elif intent == "datos":
-            return self.handle_datos(question, token)
-
         else:
             return self.handle_general(question)
-
-    # ==========================
-    # DATOS → Laravel
-    # ==========================
-    def handle_datos(self, question: str, token: str) -> str:
-        """
-        Aquí NO se usa vectorstore.
-        Solo se consulta Laravel.
-        """
-        return self.laravel_service.ask(question, token)
 
     # ==========================
     # COMPATIBILIDAD → RAG + LLM
     # ==========================
     def handle_compatibilidad(self, question: str) -> str:
+        """Usa índice precargado para análisis de compatibilidad."""
         docs = self.vectorstore.search(question, k=5)
 
         if not docs:
@@ -85,6 +74,7 @@ Pregunta del cliente:
     # GENERAL → RAG normal
     # ==========================
     def handle_general(self, question: str) -> str:
+        """Responde usando índice precargado."""
         docs = self.vectorstore.search(question, k=3)
 
         if not docs:

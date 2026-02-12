@@ -16,9 +16,6 @@ class LaravelClient:
             headers=headers
         )
 
-        print("DEBUG STATUS:", response.status_code)
-        print("DEBUG RESPONSE:", response.text)
-
         response.raise_for_status()
         return response.json()
     
