@@ -1,37 +1,50 @@
-from langchain_openai import OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-from app.core.config import settings
 from pathlib import Path
+import hashlib
+import json
 
 INDEX_PATH = Path("app/data/faiss_index")
 
-
 class VectorStoreService:
     def __init__(self):
-        self.embeddings = OpenAIEmbeddings(
-            api_key=settings.OPENAI_API_KEY
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
+        self.db = None
+        self.last_hash = None  # 👈 nuevo
 
-        if INDEX_PATH.exists():
-            self.db = FAISS.load_local(
-                INDEX_PATH,
-                self.embeddings,
-                allow_dangerous_deserialization=True
-            )
-        else:
-            self.db = None
+    def _generate_hash(self, products: list[dict]) -> str:
+        # Ordenamos para evitar cambios por orden distinto
+        sorted_products = sorted(products, key=lambda x: x["id"])
+        products_string = json.dumps(sorted_products, sort_keys=True)
+        return hashlib.md5(products_string.encode()).hexdigest()
 
-    def build_index(self, products: list[dict]):
+    def build_index_if_needed(self, products: list[dict]):
+        current_hash = self._generate_hash(products)
+
+        if self.last_hash == current_hash:
+            # No hay cambios, no reconstruimos
+            return
+
+        # Si cambió, reconstruimos
         texts = []
         metadatas = []
 
         for p in products:
             text = (
-                f"{p['nombre']} {p['marca']} "
-                f"{p.get('descripcion', '')}"
+                f"Nombre del producto: {p['nombre']}. "
+                f"Marca: {p['marca']}. "
+                f"Categoría: {p.get('categoria')}. "
+                f"Descripción técnica: {p['descripcion']}."
             )
+
             texts.append(text)
-            metadatas.append(p)
+
+            metadatas.append({
+                "id": p["id"],
+                "nombre": p["nombre"],
+            })
 
         self.db = FAISS.from_texts(
             texts=texts,
@@ -39,12 +52,10 @@ class VectorStoreService:
             metadatas=metadatas
         )
 
-        INDEX_PATH.mkdir(parents=True, exist_ok=True)
-        self.db.save_local(INDEX_PATH)
+        self.last_hash = current_hash
 
-    def search(self, query: str, k: int = 5) -> list[dict]:
+    def search(self, query: str, k: int = 3):
         if not self.db:
-            return []
+            raise Exception("Índice no generado")
 
-        docs = self.db.similarity_search(query, k=k)
-        return [doc.metadata for doc in docs]
+        return self.db.similarity_search(query, k=k)

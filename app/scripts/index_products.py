@@ -2,13 +2,21 @@ from app.services.laravel_client import LaravelClient
 from app.services.vectorstore import VectorStoreService
 from app.core.config import settings
 
-TOKEN = "Bearer TU_TOKEN_ADMIN"
+def main():
+    laravel = LaravelClient()
+    vectorstore = VectorStoreService()
 
-laravel = LaravelClient()
-vectorstore = VectorStoreService()
+    products = laravel.get_products(settings.LARAVEL_API_TOKEN)
 
-products = laravel.get_products(TOKEN)
+    if not isinstance(products, list):
+        raise Exception("Formato inesperado desde Laravel")
 
-vectorstore.build_index(products)
+    print(f"📦 Productos recibidos: {len(products)}")
 
-print("✅ Índice FAISS generado correctamente")
+    vectorstore.build_index(products)
+
+    print("✅ Índice FAISS generado correctamente")
+
+
+if __name__ == "__main__":
+    main()
