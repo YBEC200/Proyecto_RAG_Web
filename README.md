@@ -109,4 +109,5 @@ En la consola de uvicorn verás:
 MIO:
 Siempre activa el entorno virtual:
 source .venv/Scripts/activate
-python -m uv run uvicorn app.main:app --port 8001
+pip install -r requirements.txt
+python -m uv run uvicorn app.main:app --host 0.0.0.0 --port 8001
