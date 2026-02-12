@@ -85,8 +85,6 @@ Pregunta del cliente:
     # GENERAL → RAG normal
     # ==========================
     def handle_general(self, question: str) -> str:
-        
-
         docs = self.vectorstore.search(question, k=3)
 
         if not docs:
